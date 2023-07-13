@@ -35,7 +35,8 @@ const expressError = require ("../expressError")
 const User = require("../models/user");
 const Message = require("../models/message")
 const router = new express.Router();
-const jwt = require ("jsonwebtoken")
+const jwt = require ("jsonwebtoken");
+const { ensureLoggedIn, authenticateJWT, ensureCorrectUser } = require("../middleware/auth");
 
 
 router.get("/:id/", async function(req,res, next){
@@ -55,14 +56,10 @@ router.get("/:id/", async function(req,res, next){
 })
 
 
-router.post("/", async function(req, res, next){
+router.post("/", authenticateJWT, ensureLoggedIn, async function(req, res, next){
     try{
-        const _token = req.body._token
-        if (!_token){
-            throw new expressError("Unathorized",  400)
-        }        console.log(_token)
-        const payload = jwt.verify(_token, SECRET_KEY)
-        const from_username = payload.username
+        
+        const from_username = req.user.username
         const to_username = req.body.to_username
         const body = req.body.body
         const result = await Message.create({from_username, to_username, body})
@@ -74,16 +71,13 @@ router.post("/", async function(req, res, next){
 } )
 
 
-router.post("/:id/read/", async function(req, res, next){
+router.post("/:id/read/", authenticateJWT ,ensureLoggedIn, async function(req, res, next){
     try{
         const id= req.params.id
-        const _token = req.body._token
-        const payload = jwt.verify(_token, SECRET_KEY)
-        const username = payload.username
-        console.log(username)
+        const username = req.user.username
+      
         const message = await Message.get(id)
         const to_username = message.to_user.username
-        console.log(to_username)
         if (username != to_username){
             throw new expressError("Unathorized!", 400)
         }
